@@ -1,4 +1,4 @@
-package com.demo.excelproject;
+package com.demo.ExcelProject;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -20,63 +20,91 @@ public class JobTimingsNStatusXL {
 	public static void main(String[] args) {
 		try {
 			FileInputStream file = new FileInputStream(
-					"C:\\Users\\AL04040\\OneDrive - Elevance Health\\Documents\\VA_SBE\\temp\\Daily Sheet_TEST.xlsx");
+					"C:\\Users\\AL04040\\OneDrive - Elevance Health\\Documents\\VA_SBE\\temp\\Daily Sheet1.xlsx");
 			XSSFWorkbook wb = new XSSFWorkbook(file);
 			XSSFSheet sh1 = wb.getSheet("CTM Details");
 			XSSFSheet sh2 = wb.getSheet("Checklist");
 			DataFormatter fm = new DataFormatter();
-			DateFormat df = new SimpleDateFormat("hh:mm:ss a");
+			DateFormat timeFormatter = new SimpleDateFormat("hh:mm:ss a");
+			DateFormat odrDteFormatter = new SimpleDateFormat("dd/MM/yyyy");
 			int sh1Len = sh1.getLastRowNum();
 			int sh2Len = sh2.getLastRowNum();
-			System.out.printf("Sheet 1 length - %d, Sheet 2 length - %d\n", sh1Len ,sh2Len);
+			System.out.printf("%d, %d\n", sh1Len, sh2Len);
 			Cell scheduleCell = null;
 			String schedule = "";
-			int[] flag = new int[sh2Len+1];
+			int[] flag = new int[sh2Len + 1];
+			String[] unmatchedJobs = new String[15];
+			int cntr = 0;
 			for (int i = 0; i <= sh2Len; i++) {
-				flag[i]=0;
+				flag[i] = 0;
 				scheduleCell = sh2.getRow(i).getCell(6);
 				schedule = scheduleCell.getStringCellValue();
 				if (schedule.contains("On Demand") || schedule.contains("OnDemand")) {
 					Cell naCell = sh2.getRow(i).createCell(11);
 					naCell.setCellValue("NA");
 				}
+				// else {
+				// isJobTodayScan("02/12/2024", schedule);
+				// }
 			}
 			for (int i = 0; i <= sh1Len; i++) {
 				String jobStatus = fm.formatCellValue(sh1.getRow(i).getCell(2));
+				int matched = 0;
+				String sh1JobName = fm.formatCellValue(sh1.getRow(i).getCell(1));
+				String sh1FldrName = fm.formatCellValue(sh1.getRow(i).getCell(28));
+				XSSFCell ordrDtCell = sh1.getRow(i).getCell(20);
+				String ordrDate = "";
+				// block which gets order date from the job details
+				if (ordrDtCell != null) {// ignoring NullPointerException
+					if (ordrDtCell.getCellType() != 3) {
+						if (ordrDtCell.getCellType() != 1) {
+							Date date = ordrDtCell.getDateCellValue();
+							ordrDate = odrDteFormatter.format(date);
+						} else {
+							ordrDate = ordrDtCell.getStringCellValue();
+							if (ordrDate.contains("/")) {
+								String[] newOrdrDte = ordrDate.split("/");
+								ordrDate = (newOrdrDte[0].length() == 1 ? ("0" + newOrdrDte[0]) : newOrdrDte[0]) + "/"
+										+ (newOrdrDte[1].length() == 1 ? ("0" + newOrdrDte[1]) : newOrdrDte[1]) + "/"
+										+ newOrdrDte[2];
+							}
+						}
+					}
+				}
+
 				for (int j = 0; j <= sh2Len; j++) {
-					String sh1JobName = fm.formatCellValue(sh1.getRow(i).getCell(1));
-					String sh1FldrName = fm.formatCellValue(sh1.getRow(i).getCell(28));
 					String sh2JobName = fm.formatCellValue(sh2.getRow(j).getCell(3));
 					String sh2FldrName = fm.formatCellValue(sh2.getRow(j).getCell(4));
 					if (sh1JobName.equals(sh2JobName) && sh1FldrName.equals(sh2FldrName)) {
+						matched = 1;
 						XSSFCell cellStartDateINP = sh1.getRow(i).getCell(14);
 						XSSFCell cellEndDateINP = sh1.getRow(i).getCell(15);
 						String startDate = "";
 						String endDate = "";
-						Cell cellJobStatus = null;
+						Cell cellJobStatus = sh2.getRow(j).getCell(11);
 						String sh2JobStatus = fm.formatCellValue(sh2.getRow(j).getCell(11));
-						//If condition to fill only the job status if the cell is empty
 						if ((!sh2JobStatus.equalsIgnoreCase("ended ok")) && flag[j] == 0) {
+							flag[j] = 1;
 							Cell cellStDtOUT = sh2.getRow(j).createCell(9);
 							Cell cellEnDtOUT = sh2.getRow(j).createCell(10);
 							cellJobStatus = sh2.getRow(j).createCell(11);
-							//Nested If Else block to ignore NullPointerException
-							if (cellStartDateINP != null) {
+							if (cellStartDateINP != null) {// ignoring
+															// NullPointerException
 								if (cellStartDateINP.getCellType() != 3) {
 									if (cellStartDateINP.getCellType() != 1) {
 										Date date1 = cellStartDateINP.getDateCellValue();
-										startDate = df.format(date1);
+										startDate = timeFormatter.format(date1);
 									} else {
 										startDate = cellStartDateINP.getStringCellValue();
 									}
 								}
 							}
-							//Nested If Else block to ignore NullPointerException
-							if (cellEndDateINP != null) {
+							if (cellEndDateINP != null) {// ignoring
+															// NullPointerException
 								if (cellEndDateINP.getCellType() != 3) {
-									if (cellStartDateINP.getCellType() != 1) {
+									if (cellEndDateINP.getCellType() != 1) {
 										Date date2 = cellEndDateINP.getDateCellValue();
-										endDate = df.format(date2);
+										endDate = timeFormatter.format(date2);
 									} else {
 										endDate = cellStartDateINP.getStringCellValue();
 									}
@@ -84,7 +112,6 @@ public class JobTimingsNStatusXL {
 							}
 							cellStDtOUT.setCellValue(startDate);
 							cellEnDtOUT.setCellValue(endDate);
-							//Block to change job status to Executing
 							switch (jobStatus) {
 							case "Ended OK":
 								cellJobStatus.setCellValue("Ended OK");
@@ -99,21 +126,44 @@ public class JobTimingsNStatusXL {
 								break;
 							}
 							String srvr = fm.formatCellValue(sh2.getRow(j).getCell(5));
+
 							if (startDate.equals("") && endDate.equals(""))
 								cellJobStatus.setCellValue("Yet to start");
-							else if(isJobNewScan(srvr))
-								cellJobStatus.setCellValue("Ended OK");
-							System.out.printf("%d)%s - %s\n", (i + 1), sh2JobName, sh2FldrName);
+							if (ordrDate.contains("/")) {
+								System.out.printf("%d) %s - %s%n", (i + 1), sh2JobName, sh2FldrName);
+								if (!isJobInScan(srvr, ordrDate)) {
+									cellJobStatus.setCellValue("NA");
+									cellStDtOUT.setCellValue("");
+									cellEnDtOUT.setCellValue("");
+								}
+							}
 							break;
 						}
 					}
+//					String srvr = fm.formatCellValue(sh2.getRow(j).getCell(5));
+//					if (schedule.contains("MON") || schedule.contains("TUE") || schedule.contains("WED")) {
+//						if (fm.formatCellValue(sh2.getRow(j).getCell(11)).equals("") && i != 0) {
+//							Cell cellJobStatus = sh2.getRow(j).createCell(11);
+//							if (isJobTodayScan(ordrDate, schedule, srvr))
+//								cellJobStatus.setCellValue("Yet to start");
+//							else
+//								cellJobStatus.setCellValue("NA");
+//						}
+//					}
 				}
+				if (matched == 0)
+					unmatchedJobs[cntr++] = sh1JobName;
 			}
 			sh2.autoSizeColumn(9);
 			sh2.autoSizeColumn(10);
 			sh2.autoSizeColumn(11);
+			System.out.println("These jobs are not present in Job Checklist:");
+			for (int i = 0; i < cntr; i++) {
+				if (!unmatchedJobs[i].equalsIgnoreCase("name") && cntr>1)
+					System.out.printf("%d) %s%n", (i + 1), unmatchedJobs[i]);
+			}
 			FileOutputStream fileOut = new FileOutputStream(
-					"C:\\Users\\AL04040\\OneDrive - Elevance Health\\Documents\\VA_SBE\\temp\\Daily Sheet_TEST.xlsx");
+					"C:\\Users\\AL04040\\OneDrive - Elevance Health\\Documents\\VA_SBE\\temp\\Daily Sheet2.xlsx");
 			wb.write(fileOut);
 			fileOut.close();
 			System.out.println("File successfully written and timings marked for completed jobs.");
@@ -121,40 +171,52 @@ public class JobTimingsNStatusXL {
 			e.printStackTrace();
 		}
 	}
-	
-	//function to know if the server had new scan or not
-	public static boolean isJobNewScan(String srvr){
-		DateFormat dateNTimeFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-		DateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
+
+	// function to know if the server had new scan or not
+	public static boolean isJobInScan(String srvr, String ordrDate) throws ParseException {
+		DateFormat dateNTimeFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
+		DateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
 		dateFormat.setTimeZone(TimeZone.getTimeZone("EST"));
 		dateNTimeFormat.setTimeZone(TimeZone.getTimeZone("EST"));
 		Calendar cal = Calendar.getInstance();
 		cal.add(Calendar.DATE, 1);
-		Date curDatenTime = new Date();
 		Date curDate = new Date();
-		String tdyDate = dateFormat.format(curDate);
-		String tmrDate = dateNTimeFormat.format(cal.getTime());
+		Date curOrdrDate = dateFormat.parse(ordrDate);
+		String tdyOdrDate = dateFormat.format(curOrdrDate);
+		String tmrDate = dateFormat.format(cal.getTime());
 		Date tdy3pmEST = null, tmr3pmEST = null;
 		Date tdy6amEST = null, tmr6amEST = null;
-		try {
-			tdy3pmEST = dateNTimeFormat.parse(tdyDate+" 15:00:00");
-			tdy6amEST = dateNTimeFormat.parse(tdyDate+" 06:00:00");
-			tmr3pmEST = dateNTimeFormat.parse(tmrDate+" 15:00:00");
-			tmr6amEST = dateNTimeFormat.parse(tmrDate+" 06:00:00");
-		} catch (ParseException e) {
-			e.printStackTrace();
-		}
-		if(srvr.equals("CTM200")){
-			if(curDatenTime.after(tdy3pmEST) && curDatenTime.before(tmr3pmEST))
-				return true;
-			else
-				return false;
-		}else{
-			if(curDatenTime.after(tdy6amEST) && curDatenTime.before(tmr6amEST))
-				return true;
-			else
-				return false;
-		}
+		tdy3pmEST = dateNTimeFormat.parse(tdyOdrDate + " 15:00:00");
+		tdy6amEST = dateNTimeFormat.parse(tdyOdrDate + " 06:00:00");
+		tmr3pmEST = dateNTimeFormat.parse(tmrDate + " 15:00:00");
+		tmr6amEST = dateNTimeFormat.parse(tmrDate + " 06:00:00");
+		if (tdyOdrDate.equals(dateFormat.format((curDate)))) {
+			if (srvr.equals("CTM200")) {
+				System.out.println(dateNTimeFormat.format(curDate));
+				if (curDate.after(tdy3pmEST) && curDate.before(tmr3pmEST)) {
+					System.out.println("yes");
+					return true;
+				} else
+					return false;
+			} else {
+				if (curDate.after(tdy6amEST) && curDate.before(tmr6amEST)) {
+					System.out.println("yes");
+					return true;
+				} else
+					return false;
+			}
+		} else
+			return false;
 	}
 
+	// function to give confirmation of job availability accorting to the day
+	public static boolean isJobTodayScan(String ordrDate, String schedule, String srvr) throws ParseException {
+		DateFormat dayFrmt = new SimpleDateFormat("EE");
+		DateFormat dateFrmt = new SimpleDateFormat("MM/dd/yyyy");
+		Date date = dateFrmt.parse(ordrDate);
+		System.out.println(dayFrmt.format(date).toUpperCase());
+		if (schedule.contains(dayFrmt.format(date).toUpperCase()) && isJobInScan(srvr, ordrDate))
+			return true;
+		return false;
+	}
 }

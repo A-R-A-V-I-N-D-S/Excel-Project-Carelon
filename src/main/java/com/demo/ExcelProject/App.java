@@ -1,4 +1,4 @@
-package com.demo.excelproject;
+package com.demo.ExcelProject;
 
 /**
  * Hello world!
