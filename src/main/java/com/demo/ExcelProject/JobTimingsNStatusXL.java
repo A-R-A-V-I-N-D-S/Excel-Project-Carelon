@@ -7,6 +7,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Scanner;
 import java.util.TimeZone;
 
 import org.apache.poi.ss.usermodel.Cell;
@@ -26,7 +27,11 @@ public class JobTimingsNStatusXL {
 			XSSFSheet sh2 = wb.getSheet("Checklist");
 			DataFormatter fm = new DataFormatter();
 			DateFormat timeFormatter = new SimpleDateFormat("hh:mm:ss a");
-			DateFormat odrDteFormatter = new SimpleDateFormat("dd/MM/yyyy");
+			DateFormat odrDteFormatter = new SimpleDateFormat("MM/dd/yyyy");
+			Scanner scan = new Scanner(System.in);
+			System.out.println("Enter the Order Date that you need to enter timings in format (MM/dd/yyyy):");
+			String gvnOrdrDate = scan.next();
+			System.out.println(gvnOrdrDate);
 			int sh1Len = sh1.getLastRowNum();
 			int sh2Len = sh2.getLastRowNum();
 			System.out.printf("%d, %d\n", sh1Len, sh2Len);
@@ -131,7 +136,7 @@ public class JobTimingsNStatusXL {
 								cellJobStatus.setCellValue("Yet to start");
 							if (ordrDate.contains("/")) {
 								System.out.printf("%d) %s - %s%n", (i + 1), sh2JobName, sh2FldrName);
-								if (!isJobInScan(srvr, ordrDate)) {
+								if (!isJobInScan(srvr, ordrDate, gvnOrdrDate)) {
 									cellJobStatus.setCellValue("NA");
 									cellStDtOUT.setCellValue("");
 									cellEnDtOUT.setCellValue("");
@@ -163,7 +168,7 @@ public class JobTimingsNStatusXL {
 					System.out.printf("%d) %s%n", (i + 1), unmatchedJobs[i]);
 			}
 			FileOutputStream fileOut = new FileOutputStream(
-					"C:\\Users\\AL04040\\OneDrive - Elevance Health\\Documents\\VA_SBE\\temp\\Daily Sheet2.xlsx");
+					"C:\\Users\\AL04040\\OneDrive - Elevance Health\\Documents\\VA_SBE\\temp\\Daily Sheet1.xlsx");
 			wb.write(fileOut);
 			fileOut.close();
 			System.out.println("File successfully written and timings marked for completed jobs.");
@@ -173,7 +178,7 @@ public class JobTimingsNStatusXL {
 	}
 
 	// function to know if the server had new scan or not
-	public static boolean isJobInScan(String srvr, String ordrDate) throws ParseException {
+	public static boolean isJobInScan(String srvr, String ordrDate, String gvnOrdrDate) throws ParseException {
 		DateFormat dateNTimeFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
 		DateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
 		dateFormat.setTimeZone(TimeZone.getTimeZone("EST"));
@@ -190,7 +195,7 @@ public class JobTimingsNStatusXL {
 		tdy6amEST = dateNTimeFormat.parse(tdyOdrDate + " 06:00:00");
 		tmr3pmEST = dateNTimeFormat.parse(tmrDate + " 15:00:00");
 		tmr6amEST = dateNTimeFormat.parse(tmrDate + " 06:00:00");
-		if (tdyOdrDate.equals(dateFormat.format((curDate)))) {
+		if (tdyOdrDate.equals(gvnOrdrDate)) {
 			if (srvr.equals("CTM200")) {
 				System.out.println(dateNTimeFormat.format(curDate));
 				if (curDate.after(tdy3pmEST) && curDate.before(tmr3pmEST)) {
@@ -210,12 +215,12 @@ public class JobTimingsNStatusXL {
 	}
 
 	// function to give confirmation of job availability accorting to the day
-	public static boolean isJobTodayScan(String ordrDate, String schedule, String srvr) throws ParseException {
+	public static boolean isJobTodayScan(String ordrDate, String schedule, String srvr, String gvnOrdrDate) throws ParseException {
 		DateFormat dayFrmt = new SimpleDateFormat("EE");
 		DateFormat dateFrmt = new SimpleDateFormat("MM/dd/yyyy");
 		Date date = dateFrmt.parse(ordrDate);
 		System.out.println(dayFrmt.format(date).toUpperCase());
-		if (schedule.contains(dayFrmt.format(date).toUpperCase()) && isJobInScan(srvr, ordrDate))
+		if (schedule.contains(dayFrmt.format(date).toUpperCase()) && isJobInScan(srvr, ordrDate, gvnOrdrDate))
 			return true;
 		return false;
 	}
