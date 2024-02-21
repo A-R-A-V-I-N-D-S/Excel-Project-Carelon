@@ -27,11 +27,12 @@ public class JobTimingsNStatusXL {
 			XSSFSheet sh2 = wb.getSheet("Checklist");
 			DataFormatter fm = new DataFormatter();
 			DateFormat timeFormatter = new SimpleDateFormat("hh:mm:ss a");
-			DateFormat odrDteFormatter = new SimpleDateFormat("MM/dd/yyyy");
+			DateFormat odrDteFormatter = new SimpleDateFormat("dd/MM/yyyy");
 			Scanner scan = new Scanner(System.in);
 			System.out.println("Enter the Order Date that you need to enter timings in format (MM/dd/yyyy):");
 			String gvnOrdrDate = scan.next();
 			System.out.println(gvnOrdrDate);
+			scan.close();
 			int sh1Len = sh1.getLastRowNum();
 			int sh2Len = sh2.getLastRowNum();
 			System.out.printf("%d, %d\n", sh1Len, sh2Len);
@@ -48,9 +49,6 @@ public class JobTimingsNStatusXL {
 					Cell naCell = sh2.getRow(i).createCell(11);
 					naCell.setCellValue("NA");
 				}
-				// else {
-				// isJobTodayScan("02/12/2024", schedule);
-				// }
 			}
 			for (int i = 0; i <= sh1Len; i++) {
 				String jobStatus = fm.formatCellValue(sh1.getRow(i).getCell(2));
@@ -88,6 +86,8 @@ public class JobTimingsNStatusXL {
 						String endDate = "";
 						Cell cellJobStatus = sh2.getRow(j).getCell(11);
 						String sh2JobStatus = fm.formatCellValue(sh2.getRow(j).getCell(11));
+						// condition to map for the only the jobs that are not
+						// in Ended OK and that are not mapped yet
 						if ((!sh2JobStatus.equalsIgnoreCase("ended ok")) && flag[j] == 0) {
 							flag[j] = 1;
 							Cell cellStDtOUT = sh2.getRow(j).createCell(9);
@@ -111,12 +111,13 @@ public class JobTimingsNStatusXL {
 										Date date2 = cellEndDateINP.getDateCellValue();
 										endDate = timeFormatter.format(date2);
 									} else {
-										endDate = cellStartDateINP.getStringCellValue();
+										endDate = cellEndDateINP.getStringCellValue();
 									}
 								}
 							}
 							cellStDtOUT.setCellValue(startDate);
 							cellEnDtOUT.setCellValue(endDate);
+							// switch block to set the exact job status
 							switch (jobStatus) {
 							case "Ended OK":
 								cellJobStatus.setCellValue("Ended OK");
@@ -145,30 +146,28 @@ public class JobTimingsNStatusXL {
 							break;
 						}
 					}
-//					String srvr = fm.formatCellValue(sh2.getRow(j).getCell(5));
-//					if (schedule.contains("MON") || schedule.contains("TUE") || schedule.contains("WED")) {
-//						if (fm.formatCellValue(sh2.getRow(j).getCell(11)).equals("") && i != 0) {
-//							Cell cellJobStatus = sh2.getRow(j).createCell(11);
-//							if (isJobTodayScan(ordrDate, schedule, srvr))
-//								cellJobStatus.setCellValue("Yet to start");
-//							else
-//								cellJobStatus.setCellValue("NA");
-//						}
-//					}
 				}
 				if (matched == 0)
 					unmatchedJobs[cntr++] = sh1JobName;
+			}
+			// block for filling NA for jobs that are not in scan
+			for (int k = 1; k <= sh2Len; k++) {
+				String jobStatusNA = fm.formatCellValue(sh2.getRow(k).getCell(11));
+				if (flag[k] == 0 && jobStatusNA.equals("")) {
+					Cell cellNAjobStatus = sh2.getRow(k).createCell(11);
+					cellNAjobStatus.setCellValue("NA");
+				}
 			}
 			sh2.autoSizeColumn(9);
 			sh2.autoSizeColumn(10);
 			sh2.autoSizeColumn(11);
 			System.out.println("These jobs are not present in Job Checklist:");
 			for (int i = 0; i < cntr; i++) {
-				if (!unmatchedJobs[i].equalsIgnoreCase("name") && cntr>1)
+				if (!unmatchedJobs[i].equalsIgnoreCase("name") && cntr > 1)
 					System.out.printf("%d) %s%n", (i + 1), unmatchedJobs[i]);
 			}
 			FileOutputStream fileOut = new FileOutputStream(
-					"C:\\Users\\AL04040\\OneDrive - Elevance Health\\Documents\\VA_SBE\\temp\\Daily Sheet1.xlsx");
+					"C:\\Users\\AL04040\\OneDrive - Elevance Health\\Documents\\VA_SBE\\temp\\Daily Sheet2.xlsx");
 			wb.write(fileOut);
 			fileOut.close();
 			System.out.println("File successfully written and timings marked for completed jobs.");
@@ -215,7 +214,8 @@ public class JobTimingsNStatusXL {
 	}
 
 	// function to give confirmation of job availability accorting to the day
-	public static boolean isJobTodayScan(String ordrDate, String schedule, String srvr, String gvnOrdrDate) throws ParseException {
+	public static boolean isJobTodayScan(String ordrDate, String schedule, String srvr, String gvnOrdrDate)
+			throws ParseException {
 		DateFormat dayFrmt = new SimpleDateFormat("EE");
 		DateFormat dateFrmt = new SimpleDateFormat("MM/dd/yyyy");
 		Date date = dateFrmt.parse(ordrDate);
